@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kursi Object Identifier</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f8;
+      color: #333;
+      padding: 40px;
+      max-width: 700px;
+      margin: auto;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #206a5d;
+      text-align: center;
+    }
+
+    ul {
+      background: #e1f0ea;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    input[type="file"] {
+      margin-top: 15px;
+      padding: 10px;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      width: 100%;
+      background-color: #fff;
+      cursor: pointer;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      margin: 20px auto;
+      border: 3px solid #ddd;
+      border-radius: 8px;
+    }
+
+    #result {
+      font-weight: bold;
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      border-left: 6px solid #206a5d;
+    }
+
+    .highlight {
+      font-size: 1.2em;
+      color: #206a5d;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>♻️ Kursi - Plastic Object Identifier</h1>
+
+  <p><strong>Upload an image</strong> of a plastic object (black, transparent, or colorful). The system will identify its type and assign it to the correct conveyor belt:</p>
+  <ul>
+    <li><strong>Black</strong> → Conveyor Belt A</li>
+    <li><strong>Transparent</strong> → Conveyor Belt B</li>
+    <li><strong>Colorful</strong> → Conveyor Belt C</li>
+  </ul>
+
+  <input type="file" id="imageInput" accept="image/*">
+  <canvas id="canvas" style="display:none;"></canvas>
+  <img id="preview" hidden>
+  <div id="result"></div>
+
+  <script>
+    const input = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const result = document.getElementById("result");
+
+    input.addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          preview.src = e.target.result;
+          preview.hidden = false;
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          analyzeImage();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function analyzeImage() {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let rTotal = 0, gTotal = 0, bTotal = 0, brightnessTotal = 0;
+      const pixelCount = data.length / 4;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        rTotal += r;
+        gTotal += g;
+        bTotal += b;
+        brightnessTotal += brightness;
+      }
+
+      const avgR = rTotal / pixelCount;
+      const avgG = gTotal / pixelCount;
+      const avgB = bTotal / pixelCount;
+      const avgBrightness = brightnessTotal / pixelCount;
+
+      const belt = assignBelt(avgR, avgG, avgB, avgBrightness);
+
+      result.innerHTML = `
+        <p><strong>Average Brightness:</strong> ${avgBrightness.toFixed(2)}</p>
+        <p><strong>Average Color:</strong> R=${Math.round(avgR)}, G=${Math.round(avgG)}, B=${Math.round(avgB)}</p>
+        <p class="highlight">✅ Assigned to <strong>Conveyor Belt ${belt}</strong></p>
+      `;
+    }
+
+    function assignBelt(r, g, b, brightness) {
+      if (brightness > 180) {
+        return "B (Transparent)";
+      } else if (r < 50 && g < 50 && b < 50) {
+        return "A (Black)";
+      } else {
+        return "C (Colorful)";
+      }
+    }
+  </script>
+
+</body>
+</html>
